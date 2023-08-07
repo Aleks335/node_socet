@@ -12,32 +12,58 @@ class SocketServer {
        this.socketIO.on('connection', (socket) => {
             console.log('user of')
             console.log(`⚡: ${socket.id} user just connected!`);
+            // socket.join("some room");
 
-           this.ServiceMessage('🤗',socket.id,'user connected!')
+           socket.on('user_name',(data)=>{
+                this.users.push(new User(socket.id, socket, this, data.textMessage, data.room))
+                console.log('data.room)', data.room)
+                console.log('data.textMessage)', data.textMessage)
+                this.ServiceMessage('🤗',  data.textMessage, 'user Connected!')
+                socket.join("some room");
+            })
+           socket.on('new rooms',(data)=>{
 
-           this.users.push(new User(socket.id, socket, this))
-           // socket.on('user_name',(data)=> this.users.push(new User(socket.id, socket, this, data.user_name)))
-           // socket.on('user_name',(data)=> console.log( "data.user_name", data.user_name))
+               socket.join(data.textMessage);
+           });
 
-
-            //this - ссылка на себя (на твой обьект (SocketServer))
-        });
+       });
     }
 
-    handleUserDisconect(socket){
-        this.ServiceMessage('😭',  socket.id, 'user disconnected!')
+    handleUserDisconect(userName){
+        this.ServiceMessage('😭',  userName, 'user disconnected!')
     }
 
-    sendMessageToAll(data, avtorID){
-        this.users.forEach((item)=>{
-            const userConnect = item.id === avtorID? 'my_message' : 'other_message';
-            item.socket.emit("receiving_message", {
-                textMessage : data.textMessage,
-                myMessage : userConnect,
-                timeMessage : this.timeMessage
+
+    async sendMessageToAll(data, avtorID, user_Name) {
+
+      const fetchSockets = await this.socketIO.in('some room').fetchSockets();
+      console.log('fetchSockets', fetchSockets)
+
+        fetchSockets.forEach((item) => {
+            console.log('item', item)
+            const userConnect = item.id === avtorID ? 'my_message' : 'other_message';
+            item.emit("receiving_message", {
+
+                    textMessage: data.textMessage,
+                    myMessage: userConnect,
+                    timeMessage: this.timeMessage,
+                    userName: user_Name,
                 }
             );
         })
+
+
+        // this.users.forEach((item) => {
+        //     const userConnect = item.id === avtorID ? 'my_message' : 'other_message';
+        //
+        //     item.socket.emit("receiving_message", {
+        //             textMessage: data.textMessage,
+        //             myMessage: userConnect,
+        //             timeMessage: this.timeMessage,
+        //             userName: user_Name,
+        //         }
+        //     );
+        // })
     }
     ServiceMessage(icon, idUser, message){
         this.users.forEach((item)=>{
